@@ -28,7 +28,16 @@
 #include "IfxCpu.h"
 #include "IfxScuWdt.h"
 
+// Button
+#define PC1_BIT_LSB_IDX 11
+
+void initButton(void);
 IfxCpu_syncEvent g_cpuSyncEvent = 0;
+
+void initButton(void){
+    P02_IOCR0.U &= ~(0x1F << PC1_BIT_LSB_IDX);
+    P02_IOCR0.U |= (0x02 << PC1_BIT_LSB_IDX);
+}
 
 int core0_main(void)
 {
@@ -43,9 +52,26 @@ int core0_main(void)
     /* Wait for CPU sync event */
     IfxCpu_emitEvent(&g_cpuSyncEvent);
     IfxCpu_waitEvent(&g_cpuSyncEvent, 1);
+
+    //initial function
+    initButton();
     
     while(1)
     {
+        int switch_checker[3];
+
+        for(int i = 0; i < 3; i++){
+            switch_checker[i] = P02_IN.U & (0x1 << P1_BIT_LSB_IDX);
+            for(unsigned int i = 0; i < 100; i++);
+        }
+
+        // System Trigger
+        if(switch_checker[0] == 0 && switch_checker[1] == 0 && switch_checker[2] == 0){
+            while(1){
+                // Process is running this..
+                P10_OUT.U |= (0x1 << P1_BIT_LSB_IDX);
+            }
+        }
     }
     return (1);
 }
