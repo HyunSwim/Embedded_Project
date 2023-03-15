@@ -30,26 +30,17 @@
 
 #include "IfxCcu6_reg.h"
 #include "IfxVadc_reg.h"
-#include "IfxGtm_reg.h"
-
-// jskwon
-// for debug
-//#include <stdio.h>
 
 // Port registers
 #define PC1_BIT_LSB_IDX             11
 #define PC2_BIT_LSB_IDX             19
 #define PC3_BIT_LSB_IDX             27
-#define PC4_BIT_LSB_IDX             3
 #define PC5_BIT_LSB_IDX             11
-#define PC6_BIT_LSB_IDX             19
 #define PC7_BIT_LSB_IDX             27
 #define P1_BIT_LSB_IDX              1
 #define P2_BIT_LSB_IDX              2
 #define P3_BIT_LSB_IDX              3
-#define P4_BIT_LSB_IDX              4
 #define P5_BIT_LSB_IDX              5
-#define P6_BIT_LSB_IDX              6
 #define P7_BIT_LSB_IDX              7
 
 // SCU registers
@@ -60,7 +51,6 @@
 #define EIEN0_BIT_LSB_IDX           11
 #define INP0_BIT_LSB_IDX            12
 #define IGP0_BIT_LSB_IDX            14
-#define REN0_BIT_LSB_IDX            9
 
 // SRC registers
 #define SRPN_BIT_LSB_IDX            0
@@ -77,7 +67,9 @@
 #define T12RS_BIT_LSB_IDX           1
 #define INPT12_BIT_LSB_IDX          10
 #define ENT12PM_BIT_LSB_IDX         7
-#define T12SSC_BIT_LSB_IDX          0
+
+#define T13STR_BIT_LSB_IDX          14
+#define T13RS_BIT_LSB_IDX           9
 
 // VADC registers
 #define DISS_BIT_LSB_IDX            1
@@ -95,25 +87,8 @@
 #define ICLSEL_BIT_LSB_IDX          0
 #define VF_BIT_LSB_IDX              31
 #define RESULT_BIT_LSB_IDX          0
+#define ASSCH7_BIT_LSB_IDX          7
 
-// GTM registers
-#define DISS_BIT_LSB_IDX            1
-#define DISR_BIT_LSB_IDX            0
-#define SEL7_BIT_LSB_IDX            14
-#define SEL9_BIT_LSB_IDX            18
-#define SEL11_BIT_LSB_IDX           22
-#define EN_FXCLK_BIT_LSB_IDX        22
-#define FXCLK_SEL_BIT_LSB_IDX       0
-
-// GTM - TOM0 registers
-#define UPEN_CTRL1_BIT_LSB_IDX      18
-#define HOST_TRIG_BIT_LSB_IDX       0
-#define ENDIS_CTRL1_BIT_LSB_IDX     2
-#define OUTEN_CTRL1_BIT_LSB_IDX     2
-#define RSCNT0_CN1_BIT_LSB_IDX      18
-#define FUPD_CTRL1_BIT_LSB_IDX      2
-#define CLK_SRC_SR_BIT_LSB_IDX      12
-#define SL_BIT_LSB_IDX              11
 
 
 IfxCpu_syncEvent g_cpuSyncEvent = 0;
@@ -126,57 +101,29 @@ void initRGBLED(void);
 void initVADC(void);
 void VADC_startConversion(void);
 unsigned int VADC_readResult(void);
-void initGTM(void);
-void usonicTrigger(void);
-void initCCU61(void);
-void initUSonic(void);
 
 
-unsigned int range;
-unsigned char range_valid_flag = 0;
-
-
-__interrupt(0x0A) __vector_table(0)
-void ERU0_ISR(void)
-{
-    if( (P00_IN.U & (0x1 << P4_BIT_LSB_IDX)) != 0 )     // rising edge of echo
-    {
-        //                    _________
-        //        echo ______|
-        //                   ^
-        CCU61_TCTR4.U = 0x1 << T12RS_BIT_LSB_IDX;       // start CCU61 T12 counter
-    }
-    else                                            // falling edge of echo
-    {
-        //             ______
-        //        echo       |______
-        //                   ^
-
-        CCU61_TCTR4.B.T12RR = 0x1;       // stop CCU61 T12 counter
-
-        // (1 / t_freq) * counter * 1000000 / 58  =  centimeter
-        range = ((CCU61_T12.B.T12CV * 1000000) / 48828) / 58;
-        range_valid_flag = 1;
-
-        CCU61_TCTR4.B.T12RES = 0x1;       // reset CCU61 T12 counter
-    }
-}
+//__interrupt(0x0A) __vector_table(0)
+//void ERU0_ISR(void)
+//{
+//    P10_OUT.U ^= 0x1 << P1_BIT_LSB_IDX;  // toggle P10.1 (LED D12 RED)
+//}
 
 __interrupt(0x0B) __vector_table(0)
 void CCU60_T12_ISR(void)
 {
     P02_OUT.U ^= 0x1 << P7_BIT_LSB_IDX;
-    P02_IOCR0.B.PC3 ^= 0x11;
+    //P02_IOCR0.B.PC3 ^= 0x11;
 }
-
 
 __interrupt(0x0C) __vector_table(0)
-void CCU601_T12_ISR(void)
+void CCU60_T13_ISR(void)
 {
-    // end of 10us Trig
-    // GPIO P02.6 --> LOW
-    P02_OUT.U &= ~(0x1 << P6_BIT_LSB_IDX);
+    P10_OUT.U ^= 0x1 << P5_BIT_LSB_IDX;
+    //P02_IOCR0.B.PC3 ^= 0x11;
 }
+
+
 
 
 int core0_main(void)
@@ -193,47 +140,35 @@ int core0_main(void)
     IfxCpu_emitEvent(&g_cpuSyncEvent);
     IfxCpu_waitEvent(&g_cpuSyncEvent, 1);
 
-    initERU();
+    //initERU();
     initCCU60();
-    initCCU61();
-    initLED();
+    //initLED();
     initRGBLED();
-    //initVADC();
-    //initGTM();
+    initVADC();
     //initButton();
-    initUSonic();
+
+    unsigned int adcResult;
 
     while(1)
     {
-        for(unsigned int i = 0; i < 10000000; i++);
-        usonicTrigger();
-        while( range_valid_flag == 0);
+        VADC_startConversion();
+        adcResult = VADC_readResult();
 
-        if( range >= 60 ) // red
-        {
-            P02_OUT.U |= 0x1 << P7_BIT_LSB_IDX;
-            P10_OUT.U &= ~(0x1 << P5_BIT_LSB_IDX);
-            P10_OUT.U &= ~(0x1 << P3_BIT_LSB_IDX);
-        }
-        else if( range >= 40 ) // green
-        {
-            P02_OUT.U &= ~(0x1 << P7_BIT_LSB_IDX);
-            P10_OUT.U |= 0x1 << P5_BIT_LSB_IDX;
-            P10_OUT.U &= ~(0x1 << P3_BIT_LSB_IDX);
-        }
-        else if( range >= 20 ) // blue
-        {
-            P02_OUT.U &= ~(0x1 << P7_BIT_LSB_IDX);
-            P10_OUT.U &= ~(0x1 << P5_BIT_LSB_IDX);
-            P10_OUT.U |= 0x1 << P3_BIT_LSB_IDX;
-        }
-        else // white
-        {
-            P02_OUT.U |= 0x1 << P7_BIT_LSB_IDX;
-            P10_OUT.U |= 0x1 << P5_BIT_LSB_IDX;
-            P10_OUT.U |= 0x1 << P3_BIT_LSB_IDX;
-        }
+        CCU60_T12PR.U = 500 * adcResult -1;                       // PM interrupt freq. = f_T12 / (T12PR + 1)
+        CCU60_TCTR4.U |= 0x1 << T12STR_BIT_LSB_IDX;         // load T12PR from shadow register
 
+        CCU60_T12.U = 0;                                // clear T12 counter register
+
+        // CCU60 T12 counting start
+        CCU60_TCTR4.U = 0x1 << T12RS_BIT_LSB_IDX;           // T12 start counting
+
+        CCU60_T13PR.U = 1000 * adcResult -1;                       // PM interrupt freq. = f_T12 / (T12PR + 1)
+        CCU60_TCTR4.U |= 0x1 << T13STR_BIT_LSB_IDX;         // load T12PR from shadow register
+
+        CCU60_T13.U = 0;                                // clear T12 counter register
+
+        // CCU60 T13 counting start
+        CCU60_TCTR4.U = 0x1 << T13RS_BIT_LSB_IDX;           // T12 start counting
     }
     return (1);
 }
@@ -250,7 +185,6 @@ void initLED(void)
 void initButton(void)
 {
     P02_IOCR0.U &= ~(0x1F << PC1_BIT_LSB_IDX);       // reset P02_IOCR0 PC1
-
     P02_IOCR0.U |= 0x02 << PC1_BIT_LSB_IDX;          // set P02.1 general input (pull-up connected)
 }
 
@@ -258,14 +192,9 @@ void initERU(void)
 {
     // ERU setting
     SCU_EICR1.U &= ~(0x7 << EXIS0_BIT_LSB_IDX);
+    SCU_EICR1.U |= (0x1  << EXIS0_BIT_LSB_IDX);
 
-    SCU_EICR1.U |= (0x2  << EXIS0_BIT_LSB_IDX);     // ERS2 - Input 2
-
-
-    SCU_EICR1.U |= 0x1   << FEN0_BIT_LSB_IDX;       // falling edge
-
-    SCU_EICR1.U |= 0x1   << REN0_BIT_LSB_IDX;       // rising edge
-
+    SCU_EICR1.U |= 0x1   << FEN0_BIT_LSB_IDX;
 
     SCU_EICR1.U |= 0x1   << EIEN0_BIT_LSB_IDX;
 
@@ -293,7 +222,7 @@ void initCCU60(void)
     SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) | (1 << LCK_BIT_LSB_IDX)) & ~(1 << ENDINIT_BIT_LSB_IDX);
     while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) == 0);    // wait until locked
 
-    CCU60_CLC.U &= ~(1 << DISR_BIT_LSB_IDX);    // enable CCU
+    CCU60_CLC.U &= ~(1 << DISR_BIT_LSB_IDX);    // enable CCY
 
     // Password Access to unlock SCU_WDTSCON0
     SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) & ~(1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
@@ -303,24 +232,19 @@ void initCCU60(void)
     SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) | (1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
     while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) == 0);    // wait until locked
 
+
     // CCU60 T12 configurations
     while((CCU60_CLC.U & (1 << DISS_BIT_LSB_IDX)) != 0);// wait until CCU60 module enabled
 
-
     CCU60_TCTR0.U &= ~(0x7 << T12CLK_BIT_LSB_IDX);      // f_T12 = f_CCU6 / prescaler
-    CCU60_TCTR0.U |= 0x2 << T12CLK_BIT_LSB_IDX;         // f_CCU6 = 50 MHz, prescaler = 4
-    //CCU60_TCTR0.U |= 0x1 << T12PRE_BIT_LSB_IDX;         // f_T12 --> 12.5 MHz
-
+    CCU60_TCTR0.U |= 0x2 << T12CLK_BIT_LSB_IDX;         // f_CCU6 = 50 MHz, prescaler = 1024
+    CCU60_TCTR0.U |= 0x1 << T12PRE_BIT_LSB_IDX;         // f_T12 = 48,828 Hz
 
     CCU60_TCTR0.U &= ~(0x1 << CTM_BIT_LSB_IDX);         // T12 auto reset when period match (PM) occur
 
 
-    CCU60_T12PR.U = 125 -1;                       // PM interrupt freq. = f_T12 / (T12PR + 1)
+    CCU60_T12PR.U = 24414 -1;                       // PM interrupt freq. = f_T12 / (T12PR + 1)
     CCU60_TCTR4.U |= 0x1 << T12STR_BIT_LSB_IDX;         // load T12PR from shadow register
-
-
-    CCU60_TCTR2.B.T12SSC = 0x1;                     // Single Shot Control
-
 
     CCU60_T12.U = 0;                                // clear T12 counter register
 
@@ -332,48 +256,26 @@ void initCCU60(void)
 
     // SRC setting for CCU60
     SRC_CCU6_CCU60_SR0.U &= ~(0xFF << SRPN_BIT_LSB_IDX);
-    //SRC_CCU6_CCU60_SR0.U |= 0x0B << SRPN_BIT_LSB_IDX;   // set priority 0x0B
-    SRC_CCU6_CCU60_SR0.U |= 0x0C << SRPN_BIT_LSB_IDX;   // set priority 0x0B
+    SRC_CCU6_CCU60_SR0.U |= 0x0B << SRPN_BIT_LSB_IDX;   // set priority 0x0B
 
     SRC_CCU6_CCU60_SR0.U &= ~(0x3 << TOS_BIT_LSB_IDX);  // CPU0 service T12 PM interrupt
 
     SRC_CCU6_CCU60_SR0.U |= 0x1 << SRE_BIT_LSB_IDX;     // SR0 enabled
-}
 
-void initCCU61(void)
-{
-    // Password Access to unlock SCU_WDTSCON0
-    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) & ~(1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
-    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) != 0);    // wait until unlocked
+    CCU60_TCTR0.B.T13CLK = 0x2;     // f_CCU6 = 50 MHz, prescaler = 1024
+    CCU60_TCTR0.B.T13PRE = 0x1;     // prescaler enable
+    CCU60_T13PR.B.T13PV = 24414 - 1;
+    CCU60_TCTR4.B.T13STR = 0x1;
+    CCU60_T13.B.T13CV = 0x0;
+    CCU60_IEN.B.ENT13PM = 0x1;
+    CCU60_INP.B.INPT13 = 0x1;       // SR1
+    SRC_CCU6_CCU60_SR1.B.SRPN = 0x0C;
+    SRC_CCU6_CCU60_SR1.B.TOS = 0x0;
+    SRC_CCU6_CCU60_SR1.B.SRE = 0x1;
+    CCU60_TCTR4.B.T13RS = 0x1;
 
-    // Modify Access to clear ENDINIT
-    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) | (1 << LCK_BIT_LSB_IDX)) & ~(1 << ENDINIT_BIT_LSB_IDX);
-    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) == 0);    // wait until locked
-
-    CCU61_CLC.U &= ~(1 << DISR_BIT_LSB_IDX);    // enable CCU
-
-    // Password Access to unlock SCU_WDTSCON0
-    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) & ~(1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
-    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) != 0);    // wait until unlocked
-
-    // Modify Access to set ENDINIT
-    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) | (1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
-    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) == 0);    // wait until locked
-
-    // CCU60 T12 configurations
-    while((CCU61_CLC.U & (1 << DISS_BIT_LSB_IDX)) != 0);// wait until CCU60 module enabled
-
-
-    CCU61_TCTR0.U &= ~(0x7 << T12CLK_BIT_LSB_IDX);      // f_T12 = f_CCU6 / prescaler = 12.5 MHz
-    CCU61_TCTR0.U |= 0x2 << T12CLK_BIT_LSB_IDX;         // f_CCU6 = 50 MHz, prescaler = 4
-
-    CCU61_TCTR0.U |= 0x1 << T12PRE_BIT_LSB_IDX;         // f_T12 = f_CCU6 / 256 = 48,828 Hz
-
-
-    CCU61_T12PR.U = 100000 -1;                       // PM interrupt freq. = f_T12 / (T12PR + 1)
-    CCU61_TCTR4.U |= 0x1 << T12STR_BIT_LSB_IDX;         // load T12PR from shadow register
-
-    CCU61_T12.U = 0;                                // clear T12 counter register
+    // CCU60 T12 counting start
+    CCU60_TCTR4.U = 0x1 << T12RS_BIT_LSB_IDX;           // T12 start counting
 }
 
 void initRGBLED(void)
@@ -431,12 +333,12 @@ void initVADC(void)
     VADC_G4_CHCTR7.U &= ~(0xF << RESREG_BIT_LSB_IDX);   // store result @ Result Register G4RES0
     VADC_G4_CHCTR7.U &= ~(0x3 << ICLSEL_BIT_LSB_IDX);   // Class 0
 
-    VADC_G4_CHASS.U |= 0x1 << 7;
+    VADC_G4_CHASS.U |= 0x1 << ASSCH7_BIT_LSB_IDX;
 }
 
 void VADC_startConversion(void)
 {
-    VADC_G4_QINR0.U |= 0x07;                // no. of Request Channel = 7
+    VADC_G4_QINR0.U |= 0x07;                    // no. of Request Channel = 7
 
     VADC_G4_QMR0.U |= 0x1 << TREV_BIT_LSB_IDX;  // Generate Conversion Start Trigger Event
 }
@@ -449,75 +351,4 @@ unsigned int VADC_readResult(void)
     result = VADC_G4_RES0.U & (0xFFF << RESULT_BIT_LSB_IDX);    // read ADC value
 
     return result;
-}
-
-void initGTM(void)
-{
-    // Password Access to unlock SCU_WDTSCON0
-    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) & ~(1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
-    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) != 0);    // wait until unlocked
-
-    // Modify Access to clear ENDINIT
-    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) | (1 << LCK_BIT_LSB_IDX)) & ~(1 << ENDINIT_BIT_LSB_IDX);
-    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) == 0);    // wait until locked
-
-    GTM_CLC.U &= ~(1 << DISR_BIT_LSB_IDX);    // enable GTM
-
-    // Password Access to unlock SCU_WDTSCON0
-    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) & ~(1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
-    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) != 0);    // wait until unlocked
-
-    // Modify Access to set ENDINIT
-    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) | (1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
-    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) == 0);
-
-    while((GTM_CLC.U & (1 << DISS_BIT_LSB_IDX)) != 0); // wait until GTM module enabled
-
-
-    // GTM clock configuration
-    GTM_CMU_FXCLK_CTRL.U &= ~(0xF << FXCLK_SEL_BIT_LSB_IDX);  // input clock of CMU_FXCLK --> CMU_GCLK_EN
-    GTM_CMU_CLK_EN.U |= 0x2 << EN_FXCLK_BIT_LSB_IDX;        // enable all CMU_FXCLK
-
-    // GTM TOM0 PWM configuration
-    GTM_TOM0_TGC0_GLB_CTRL.U |= 0x2 << UPEN_CTRL1_BIT_LSB_IDX;  // TOM channel 1 enable
-
-    GTM_TOM0_TGC0_FUPD_CTRL.U |= 0x2 << FUPD_CTRL1_BIT_LSB_IDX; // enable force update of TOM channel 1
-    GTM_TOM0_TGC0_FUPD_CTRL.U |= 0x2 << RSCNT0_CN1_BIT_LSB_IDX; // reset CN0 of TOM channel 1
-
-    GTM_TOM0_TGC0_ENDIS_CTRL.U |= 0x2 << ENDIS_CTRL1_BIT_LSB_IDX;   // enable channel 1 on update trigger
-    GTM_TOM0_TGC0_OUTEN_CTRL.U |= 0x2 << OUTEN_CTRL1_BIT_LSB_IDX;   // enable channel 1 output on update trigger
-
-    GTM_TOM0_CH1_CTRL.U |= 0x1 << SL_BIT_LSB_IDX;                 // high signal level for duty cycle
-
-    GTM_TOM0_CH1_CTRL.U &= ~(0x7 << CLK_SRC_SR_BIT_LSB_IDX);
-    GTM_TOM0_CH1_CTRL.U |= 0x1 << CLK_SRC_SR_BIT_LSB_IDX;           // clock source --> CMU_FXCLK(1) = 3125 kHz
-
-    GTM_TOM0_CH1_SR0.U = 12500 - 1;                             // PWM freq. = 3125 kHz / 12500 = 250 kHz
-
-    GTM_TOM0_CH1_SR1.U = 1250 - 1;                              // duty cycle = 6250 / 12500 = 50 %
-
-    GTM_TOUTSEL6.U &= ~(0x3 << SEL7_BIT_LSB_IDX);                   // TOUT103 --> TOM0 channel 1
-                                                                // 103 = 16 * 6 + 7
-    GTM_TOM0_TGC0_GLB_CTRL.U |= 0x1 << HOST_TRIG_BIT_LSB_IDX;       // trigger update request signal
-
-}
-
-void initUSonic(void)
-{
-    P02_IOCR4.U &= ~(0x1F << PC6_BIT_LSB_IDX);       // reset P02_IOCR4 PC6
-    P00_IOCR4.U &= ~(0x1F << PC4_BIT_LSB_IDX);       // reset P00_IOCR4 PC4
-
-    P00_IOCR4.U |= 0x01 << PC4_BIT_LSB_IDX;        // set P00.4 general input (pull-down connected) [Echo]
-    P02_IOCR4.U |= 0x10 << PC6_BIT_LSB_IDX;        // set P02.6 push-pull general output            [Trig]
-
-    P02_OUT.U &= ~(0x1 << P6_BIT_LSB_IDX);
-}
-
-void usonicTrigger(void)
-{
-    // start of 10us Trigger Pulse
-    // GPIO P02.6 --> HIGH
-    P02_OUT.U |= 0x1 << P6_BIT_LSB_IDX;
-    range_valid_flag = 0;
-    CCU60_TCTR4.U = 0x1 << T12RS_BIT_LSB_IDX;           // T12 start counting
 }
