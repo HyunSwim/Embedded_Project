@@ -30,65 +30,83 @@
 
 #include "IfxCcu6_reg.h"
 #include "IfxVadc_reg.h"
+#include "IfxGtm_reg.h"
 
 // Port registers
-#define PC1_BIT_LSB_IDX             11
-#define PC2_BIT_LSB_IDX             19
-#define PC3_BIT_LSB_IDX             27
-#define PC5_BIT_LSB_IDX             11
-#define PC7_BIT_LSB_IDX             27
-#define P1_BIT_LSB_IDX              1
-#define P2_BIT_LSB_IDX              2
-#define P3_BIT_LSB_IDX              3
-#define P5_BIT_LSB_IDX              5
-#define P7_BIT_LSB_IDX              7
+#define PC1_BIT_LSB_IDX         11
+#define PC2_BIT_LSB_IDX         19
+#define PC3_BIT_LSB_IDX         27
+#define PC5_BIT_LSB_IDX         11
+#define PC7_BIT_LSB_IDX         27
+#define P1_BIT_LSB_IDX          1
+#define P2_BIT_LSB_IDX          2
+#define P3_BIT_LSB_IDX          3
+#define P5_BIT_LSB_IDX          5
+#define P7_BIT_LSB_IDX          7
 
 // SCU registers
-#define LCK_BIT_LSB_IDX             1
-#define ENDINIT_BIT_LSB_IDX         0
-#define EXIS0_BIT_LSB_IDX           4
-#define FEN0_BIT_LSB_IDX            8
-#define EIEN0_BIT_LSB_IDX           11
-#define INP0_BIT_LSB_IDX            12
-#define IGP0_BIT_LSB_IDX            14
+#define LCK_BIT_LSB_IDX         1
+#define ENDINIT_BIT_LSB_IDX     0
+#define EXIS0_BIT_LSB_IDX       4
+#define FEN0_BIT_LSB_IDX        8
+#define EIEN0_BIT_LSB_IDX       11
+#define INP0_BIT_LSB_IDX        12
+#define IGP0_BIT_LSB_IDX        14
 
 // SRC registers
-#define SRPN_BIT_LSB_IDX            0
-#define TOS_BIT_LSB_IDX             11
-#define SRE_BIT_LSB_IDX             10
+#define SRPN_BIT_LSB_IDX        0
+#define TOS_BIT_LSB_IDX         11
+#define SRE_BIT_LSB_IDX         10
 
 // CCU60 registers
-#define DISS_BIT_LSB_IDX            1
-#define DISR_BIT_LSB_IDX            0
-#define CTM_BIT_LSB_IDX             7
-#define T12PRE_BIT_LSB_IDX          3
-#define T12CLK_BIT_LSB_IDX          0
-#define T12STR_BIT_LSB_IDX          6
-#define T12RS_BIT_LSB_IDX           1
-#define INPT12_BIT_LSB_IDX          10
-#define ENT12PM_BIT_LSB_IDX         7
+#define DISS_BIT_LSB_IDX        1
+#define DISR_BIT_LSB_IDX        0
+#define CTM_BIT_LSB_IDX         7
+#define T12PRE_BIT_LSB_IDX      3
+#define T12CLK_BIT_LSB_IDX      0
+#define T12STR_BIT_LSB_IDX      6
+#define T12RS_BIT_LSB_IDX       1
+#define INPT12_BIT_LSB_IDX      10
+#define ENT12PM_BIT_LSB_IDX     7
 
 // VADC registers
+#define DISS_BIT_LSB_IDX        1
+#define DISR_BIT_LSB_IDX        0
+#define ANONC_BIT_LSB_IDX       0
+#define ASEN0_BIT_LSB_IDX       24
+#define CSM0_BIT_LSB_IDX        3
+#define PRIO0_BIT_LSB_IDX       0
+#define CMS_BIT_LSB_IDX         8
+#define FLUSH_BIT_LSB_IDX       10
+#define TREV_BIT_LSB_IDX        9
+#define ENGT_BIT_LSB_IDX        0
+#define RESPOS_BIT_LSB_IDX      21
+#define RESREG_BIT_LSB_IDX      16
+#define ICLSEL_BIT_LSB_IDX      0
+#define VF_BIT_LSB_IDX          31
+#define RESULT_BIT_LSB_IDX      0
+#define ASSCH7_BIT_LSB_IDX      7
+
+// GTM registers
 #define DISS_BIT_LSB_IDX            1
 #define DISR_BIT_LSB_IDX            0
-#define ANONC_BIT_LSB_IDX           0
-#define ASEN0_BIT_LSB_IDX           24
-#define CSM0_BIT_LSB_IDX            3
-#define PRIO0_BIT_LSB_IDX           0
-#define CMS_BIT_LSB_IDX             8
-#define FLUSH_BIT_LSB_IDX           10
-#define TREV_BIT_LSB_IDX            9
-#define ENGT_BIT_LSB_IDX            0
-#define RESPOS_BIT_LSB_IDX          21
-#define RESREG_BIT_LSB_IDX          16
-#define ICLSEL_BIT_LSB_IDX          0
-#define VF_BIT_LSB_IDX              31
-#define RESULT_BIT_LSB_IDX          0
-#define ASSCH7_BIT_LSB_IDX          7
+#define SEL7_BIT_LSB_IDX            14
+#define SEL9_BIT_LSB_IDX            18
+#define SEL11_BIT_LSB_IDX           22
+#define EN_FXCLK_BIT_LSB_IDX        22
+#define FXCLK_SEL_BIT_LSB_IDX       0
+
+// GTM - TOM0 registers
+#define UPEN_CTRL1_BIT_LSB_IDX      18
+#define HOST_TRIG_BIT_LSB_IDX       0
+#define ENDIS_CTRL1_BIT_LSB_IDX     2
+#define OUTEN_CTRL1_BIT_LSB_IDX     2
+#define RSCNT0_CN1_BIT_LSB_IDX      18
+#define FUPD_CTRL1_BIT_LSB_IDX      2
+#define CLK_SRC_SR_BIT_LSB_IDX      12
+#define SL_BIT_LSB_IDX              11
 
 
-
-#include "IfxGtm_reg.h"
 IfxCpu_syncEvent g_cpuSyncEvent = 0;
 
 void initLED(void);
@@ -136,9 +154,18 @@ int core0_main(void)
     //initLED();
     initRGBLED();
     initVADC();
+    initBuzzer();
     //initButton();
 
     unsigned int adcResult;
+    initGTM();
+    //initButton();
+
+    GTM_TOM0_TGC0_GLB_CTRL.U |= 0x1 << HOST_TRIG_BIT_LSB_IDX;       // trigger update request signal
+    GTM_TOM0_TGC1_GLB_CTRL.U |= 0x1 << HOST_TRIG_BIT_LSB_IDX;       // trigger update request signal
+
+    // from 3 octave C ~ 4 octave C {C, D, E, F, G, A, B, C}
+    unsigned int duty[4] = {1, 120,  195,  262};
 
     while(1)
     {
@@ -349,4 +376,118 @@ unsigned int VADC_readResult(void)
     result = VADC_G4_RES0.U & (0xFFF << RESULT_BIT_LSB_IDX);    // read ADC value
 
     return result;
+}
+
+
+void initGTM(void)
+{
+    // Password Access to unlock SCU_WDTSCON0
+    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) & ~(1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
+    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) != 0);    // wait until unlocked
+
+    // Modify Access to clear ENDINIT
+    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) | (1 << LCK_BIT_LSB_IDX)) & ~(1 << ENDINIT_BIT_LSB_IDX);
+    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) == 0);    // wait until locked
+
+    GTM_CLC.U &= ~(1 << DISR_BIT_LSB_IDX);    // enable GTM
+
+    // Password Access to unlock SCU_WDTSCON0
+    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) & ~(1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
+    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) != 0);    // wait until unlocked
+
+    // Modify Access to set ENDINIT
+    SCU_WDTCPU0_CON0.U = ((SCU_WDTCPU0_CON0.U ^ 0xFC) | (1 << LCK_BIT_LSB_IDX)) | (1 << ENDINIT_BIT_LSB_IDX);
+    while((SCU_WDTCPU0_CON0.U & (1 << LCK_BIT_LSB_IDX)) == 0);
+
+    while((GTM_CLC.U & (1 << DISS_BIT_LSB_IDX)) != 0); // wait until GTM module enabled
+
+
+    // GTM clock configuration
+    GTM_CMU_FXCLK_CTRL.U &= ~(0xF << FXCLK_SEL_BIT_LSB_IDX);  // input clock of CMU_FXCLK --> CMU_GCLK_EN
+    GTM_CMU_CLK_EN.U |= 0x2 << EN_FXCLK_BIT_LSB_IDX;        // enable all CMU_FXCLK
+
+    // set TGC0 to enable GTM TOM0 channel 1
+    GTM_TOM0_TGC0_GLB_CTRL.U |= 0x2 << UPEN_CTRL1_BIT_LSB_IDX;  // TOM channel 1 enable
+    GTM_TOM0_TGC0_ENDIS_CTRL.U |= 0x2 << ENDIS_CTRL1_BIT_LSB_IDX;   // enable channel 1 on update trigger
+    GTM_TOM0_TGC0_OUTEN_CTRL.U |= 0x2 << OUTEN_CTRL1_BIT_LSB_IDX;   // enable channel 1 output on update trigger
+
+
+    // set TGC0 to enable GTM TOM0 channel 2, 3, 15
+    GTM_TOM0_TGC0_GLB_CTRL.B.UPEN_CTRL2 |= 0x2;  // TOM0 channel 2 enable
+    GTM_TOM0_TGC0_GLB_CTRL.B.UPEN_CTRL3 |= 0x2;  // TOM0 channel 3 enable
+    GTM_TOM0_TGC1_GLB_CTRL.B.UPEN_CTRL7 |= 0x2;  // TOM0 channel 15 enable
+
+    GTM_TOM0_TGC0_ENDIS_CTRL.B.ENDIS_CTRL2 |= 0x2;   // enable channel 2 on update trigger
+    GTM_TOM0_TGC0_ENDIS_CTRL.B.ENDIS_CTRL3 |= 0x2;   // enable channel 3 on update trigger
+    GTM_TOM0_TGC1_ENDIS_CTRL.B.ENDIS_CTRL7 |= 0x2;   // enable channel 15 on update trigger
+
+    GTM_TOM0_TGC0_OUTEN_CTRL.B.OUTEN_CTRL2 |= 0x2;   // enable channel 2 output on update trigger
+    GTM_TOM0_TGC0_OUTEN_CTRL.B.OUTEN_CTRL3 |= 0x2;   // enable channel 3 output on update trigger
+    GTM_TOM0_TGC1_OUTEN_CTRL.B.OUTEN_CTRL7 |= 0x2;   // enable channel 15 output on update trigger
+
+
+    // TOM 0_1
+    GTM_TOM0_CH1_CTRL.U |= 0x1 << SL_BIT_LSB_IDX;                   // high signal level for duty cycle
+
+    GTM_TOM0_CH1_CTRL.U &= ~(0x7 << CLK_SRC_SR_BIT_LSB_IDX);
+    GTM_TOM0_CH1_CTRL.U |= 0x1 << CLK_SRC_SR_BIT_LSB_IDX;           // clock source --> CMU_FXCLK(1) = 6250 kHz
+
+    GTM_TOM0_CH1_SR0.U = 12500 - 1;                                 // PWM freq. = 6250 kHz / 12500 = 250 kHz
+    GTM_TOM0_CH1_SR1.U = 1250 - 1;                                  // duty cycle = 6250 / 12500 = 50 %
+
+    // TOM 0_2
+    GTM_TOM0_CH2_CTRL.U |= 0x1 << SL_BIT_LSB_IDX;                   // high signal level for duty cycle
+
+    GTM_TOM0_CH2_CTRL.U &= ~(0x7 << CLK_SRC_SR_BIT_LSB_IDX);
+    GTM_TOM0_CH2_CTRL.U |= 0x1 << CLK_SRC_SR_BIT_LSB_IDX;           // clock source --> CMU_FXCLK(1) = 6250 kHz
+
+    GTM_TOM0_CH2_SR0.U = 12500 - 1;                                 // PWM freq. = 6250 kHz / 12500 = 250 kHz
+    //GTM_TOM0_CH2_SR1.U = 12500 - 1;                               // duty cycle = 6250 / 12500 = 50 %
+
+    // TOM 0_3
+    GTM_TOM0_CH3_CTRL.U |= 0x1 << SL_BIT_LSB_IDX;                   // high signal level for duty cycle
+
+    GTM_TOM0_CH3_CTRL.U &= ~(0x7 << CLK_SRC_SR_BIT_LSB_IDX);
+    GTM_TOM0_CH3_CTRL.U |= 0x1 << CLK_SRC_SR_BIT_LSB_IDX;           // clock source --> CMU_FXCLK(1) = 6250 kHz
+
+    GTM_TOM0_CH3_SR0.U = 12500 - 1;                                 // PWM freq. = 6250 kHz / 12500 = 250 kHz
+    //GTM_TOM0_CH3_SR1.U = 125 - 1;                                 // duty cycle = 6250 / 12500 = 50 %
+
+    // TOM 0_15
+    GTM_TOM0_CH15_CTRL.B.SL |= 0x1;                                 // high signal level for duty cycle
+    GTM_TOM0_CH15_CTRL.B.CLK_SRC_SR |= 0x1;                         // clock source --> CMU_FXCLK(1) = 6250 kHz
+
+    GTM_TOM0_CH15_SR0.U = 12500 - 1;                                // PWM freq. = 6250 kHz / 12500 = 250 kHz
+    //GTM_TOM0_CH15_SR1.U = 125 - 1;                                // duty cycle = 6250 / 12500 = 50 %
+
+
+    // TOUT pin selection
+    GTM_TOUTSEL6.U &= ~(0x3 << SEL7_BIT_LSB_IDX);                   // TOUT103  --> TOM0 channel 1
+    GTM_TOUTSEL0.U &= ~(0x3 << SEL7_BIT_LSB_IDX);                   // TOUT7    --> TOM0 channel 15
+    GTM_TOUTSEL6.U &= ~(0x3 << SEL11_BIT_LSB_IDX);                  // TOUT103  --> TOM0 channel 2
+    GTM_TOUTSEL6.U &= ~(0x3 << SEL9_BIT_LSB_IDX);                   // TOUT105  --> TOM0 channel 3
+
+
+
+
+
+    // set GTM TOM0 channel 11 - Buzzer
+    GTM_TOM0_TGC1_GLB_CTRL.B.UPEN_CTRL3     |= 0x2;                   // TOM0 channel 11 enable
+    GTM_TOM0_TGC1_ENDIS_CTRL.B.ENDIS_CTRL3  |= 0x2;                   // enable channel 11 on update trigger
+    GTM_TOM0_TGC1_OUTEN_CTRL.B.OUTEN_CTRL3  |= 0x2;                   // enable channel 11 output on update trigger
+
+
+    // TOM 0_11
+    GTM_TOM0_CH11_CTRL.B.SL = 0x1;                                  // high signal level for duty cycle
+    GTM_TOM0_CH11_CTRL.B.CLK_SRC_SR = 0x1;                          // clock source --> CMU_FXCLK(1) = 6250 kHz
+    GTM_TOM0_CH11_SR0.B.SR0 = 12500 - 1;                            // PWM freq. = 6250 kHz / 12500 = 500 Hz
+    GTM_TOM0_CH11_SR1.B.SR1 = 6250 - 1;                             // duty cycle = 6250 / 12500 = 50 %
+
+    // TOUT pin selection
+    GTM_TOUTSEL0.B.SEL3 = 0x0;                                      // TOUT3  --> TOM0 channel 11
+}
+
+void initBuzzer(void)
+{
+    P02_IOCR0.B.PC3 = 0x11;
 }
