@@ -79,6 +79,9 @@
 #define ENT12PM_BIT_LSB_IDX         7
 #define T12SSC_BIT_LSB_IDX          0
 
+#define T13STR_BIT_LSB_IDX          14
+#define T13RS_BIT_LSB_IDX           9
+
 // VADC registers
 #define DISS_BIT_LSB_IDX            1
 #define DISR_BIT_LSB_IDX            0
@@ -208,34 +211,13 @@ int core0_main(void)
         usonicTrigger();
         while( range_valid_flag == 0);
 
-        if( range >= 60 ) // red
-        {
-            P02_OUT.U |= 0x1 << P7_BIT_LSB_IDX;
-            P10_OUT.U &= ~(0x1 << P5_BIT_LSB_IDX);
-            P10_OUT.U &= ~(0x1 << P3_BIT_LSB_IDX);
-        }
-        else if( range >= 40 ) // green
-        {
-            P02_OUT.U &= ~(0x1 << P7_BIT_LSB_IDX);
-            P10_OUT.U |= 0x1 << P5_BIT_LSB_IDX;
-            P10_OUT.U &= ~(0x1 << P3_BIT_LSB_IDX);
-        }
-        else if( range >= 20 ) // blue
-        {
-            P02_OUT.U &= ~(0x1 << P7_BIT_LSB_IDX);
-            P10_OUT.U &= ~(0x1 << P5_BIT_LSB_IDX);
-            P10_OUT.U |= 0x1 << P3_BIT_LSB_IDX;
-        }
-        else // white
-        {
-            P02_OUT.U |= 0x1 << P7_BIT_LSB_IDX;
-            P10_OUT.U |= 0x1 << P5_BIT_LSB_IDX;
-            P10_OUT.U |= 0x1 << P3_BIT_LSB_IDX;
-        }
+        CCU60_T13PR.U = 50000 * range -1;                       // PM interrupt freq. = f_T12 / (T12PR + 1)
+        CCU60_TCTR4.U |= 0x1 << T13STR_BIT_LSB_IDX;         // load T12PR from shadow register
 
-        for(unsigned int i = 0; i < 10000000; i++);
-        usonicTrigger();
-        while( range_valid_flag == 0);
+        CCU60_T13.U = 0;                                // clear T12 counter register
+
+        // CCU60 T12 counting start
+        CCU60_TCTR4.U = 0x1 << T13RS_BIT_LSB_IDX;           // T12 start counting
     }
     return (1);
 }
@@ -339,6 +321,18 @@ void initCCU60(void)
     SRC_CCU6_CCU60_SR0.U &= ~(0x3 << TOS_BIT_LSB_IDX);  // CPU0 service T12 PM interrupt
 
     SRC_CCU6_CCU60_SR0.U |= 0x1 << SRE_BIT_LSB_IDX;     // SR0 enabled
+
+    CCU60_TCTR0.B.T13CLK = 0x2;     // f_CCU6 = 50 MHz, prescaler = 1024
+    CCU60_TCTR0.B.T13PRE = 0x1;     // prescaler enable
+    CCU60_T13PR.B.T13PV = 24414 - 1;
+    CCU60_TCTR4.B.T13STR = 0x1;
+    CCU60_T13.B.T13CV = 0x0;
+    CCU60_IEN.B.ENT13PM = 0x1;
+    CCU60_INP.B.INPT13 = 0x1;       // SR1
+    SRC_CCU6_CCU60_SR1.B.SRPN = 0x0C;
+    SRC_CCU6_CCU60_SR1.B.TOS = 0x0;
+    SRC_CCU6_CCU60_SR1.B.SRE = 0x1;
+    CCU60_TCTR4.B.T13RS = 0x1;
 }
 
 void initCCU61(void)
