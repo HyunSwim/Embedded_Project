@@ -169,6 +169,14 @@ void CCU60_T12_ISR(void)
     P02_OUT.U &= ~(0x1 << P6_BIT_LSB_IDX);
 }
 
+__interrupt(0x0C) __vector_table(0)
+void CCU60_T13_ISR(void)
+{
+    P02_OUT.U ^= 0x1 << P7_BIT_LSB_IDX;
+    P02_IOCR0.B.PC3 ^= 0x11;
+}
+
+
 
 int core0_main(void)
 {
@@ -225,6 +233,9 @@ int core0_main(void)
             P10_OUT.U |= 0x1 << P3_BIT_LSB_IDX;
         }
 
+        for(unsigned int i = 0; i < 10000000; i++);
+        usonicTrigger();
+        while( range_valid_flag == 0);
     }
     return (1);
 }
