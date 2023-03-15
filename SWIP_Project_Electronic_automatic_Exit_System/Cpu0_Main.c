@@ -31,7 +31,7 @@
 #include "IfxCcu6_reg.h"
 #include "IfxVadc_reg.h"
 #include "IfxGtm_reg.h"
-
+#include <stdio.h>
 // jskwon
 // for debug
 //#include <stdio.h>
@@ -103,6 +103,9 @@
 #define DISS_BIT_LSB_IDX            1
 #define DISR_BIT_LSB_IDX            0
 #define SEL7_BIT_LSB_IDX            14
+#define SEL9_BIT_LSB_IDX            18
+#define SEL11_BIT_LSB_IDX           22
+
 #define EN_FXCLK_BIT_LSB_IDX        22
 #define FXCLK_SEL_BIT_LSB_IDX       0
 
@@ -131,7 +134,7 @@ void initGTM(void);
 void usonicTrigger(void);
 void initCCU61(void);
 void initUSonic(void);
-
+void initBuzzer(void);
 
 unsigned int range;
 unsigned char range_valid_flag = 0;
@@ -201,25 +204,84 @@ int core0_main(void)
     initLED();
     initRGBLED();
     //initVADC();
-    //initGTM();
-    //initButton();
+    initGTM();
+    initButton();
     initUSonic();
+    initBuzzer();
+
+    //FILE* fp = fopen("../test.txt","w");
 
     while(1)
     {
-        for(unsigned int i = 0; i < 10000000; i++);
-        usonicTrigger();
-        while( range_valid_flag == 0);
+        int switch_checker[3];
 
-        CCU60_T13PR.U = 50000 * range -1;                       // PM interrupt freq. = f_T12 / (T12PR + 1)
-        CCU60_TCTR4.U |= 0x1 << T13STR_BIT_LSB_IDX;         // load T12PR from shadow register
+        for(int i = 0; i < 3; i++){
+            switch_checker[i] = P02_IN.U & (0x1 << P1_BIT_LSB_IDX);
+            for(unsigned int i = 0; i < 100; i++);
+        }
 
-        CCU60_T13.U = 0;                                // clear T12 counter register
+        if(switch_checker[0] == 0 && switch_checker[1] == 0 && switch_checker[2] == 0){
 
-        // CCU60 T12 counting start
-        CCU60_TCTR4.U = 0x1 << T13RS_BIT_LSB_IDX;           // T12 start counting
+            GTM_TOM0_TGC0_GLB_CTRL.U |= 0x1 << HOST_TRIG_BIT_LSB_IDX;       // trigger update request signal
+            GTM_TOM0_TGC1_GLB_CTRL.U |= 0x1 << HOST_TRIG_BIT_LSB_IDX;       // trigger update request signal
+
+            unsigned int duty[4] = {1, 30,  60,  120};
+
+            while(1){
+                // Process is running this..
+                for(unsigned int i = 0; i < 10000000; i++);
+
+                if (range >= 100)
+                {
+                    range = 100;
+                }
+
+
+                usonicTrigger();
+                while( range_valid_flag == 0);
+
+                CCU60_T13PR.U = 125 * range -1;                       // PM interrupt freq. = f_T12 / (T12PR + 1)
+                CCU60_TCTR4.U |= 0x1 << T13STR_BIT_LSB_IDX;         // load T12PR from shadow register
+
+                CCU60_T13.U = 0;                                // clear T12 counter register
+
+                // CCU60 T13 counting start
+                CCU60_TCTR4.U = 0x1 << T13RS_BIT_LSB_IDX;           // T12 start counting
+
+                if (range >= 100 )
+
+                {
+                    GTM_TOM0_CH11_SR0.B.SR0 = 625000 / duty[0];
+                    GTM_TOM0_CH11_SR1.B.SR1 = 312500 / duty[0];
+                }
+
+                else if( range >= 80 )
+                {
+                    GTM_TOM0_CH11_SR0.B.SR0 = 625000 / duty[1];
+                    GTM_TOM0_CH11_SR1.B.SR1 = 312500 / duty[1];
+                }
+
+                else if( range >= 40 )
+                {
+                    GTM_TOM0_CH11_SR0.B.SR0 = 625000 / duty[2];
+                    GTM_TOM0_CH11_SR1.B.SR1 = 312500 / duty[2];
+                }
+
+                else
+                {
+                    GTM_TOM0_CH11_SR0.B.SR0 = 625000 / duty[3];
+                    GTM_TOM0_CH11_SR1.B.SR1 = 312500 / duty[3];
+                }
+
+            }
+        }
+        else{
+            P02_OUT.U &= ~(0x1 << P7_BIT_LSB_IDX);
+
+        }
     }
     return (1);
+
 }
 
 void initLED(void)
@@ -324,7 +386,7 @@ void initCCU60(void)
 
     CCU60_TCTR0.B.T13CLK = 0x2;     // f_CCU6 = 50 MHz, prescaler = 1024
     CCU60_TCTR0.B.T13PRE = 0x1;     // prescaler enable
-    CCU60_T13PR.B.T13PV = 24414 - 1;
+    CCU60_T13PR.B.T13PV = 125 - 1;
     CCU60_TCTR4.B.T13STR = 0x1;
     CCU60_T13.B.T13CV = 0x0;
     CCU60_IEN.B.ENT13PM = 0x1;
@@ -473,28 +535,82 @@ void initGTM(void)
     GTM_CMU_FXCLK_CTRL.U &= ~(0xF << FXCLK_SEL_BIT_LSB_IDX);  // input clock of CMU_FXCLK --> CMU_GCLK_EN
     GTM_CMU_CLK_EN.U |= 0x2 << EN_FXCLK_BIT_LSB_IDX;        // enable all CMU_FXCLK
 
-    // GTM TOM0 PWM configuration
+    // set TGC0 to enable GTM TOM0 channel 1
     GTM_TOM0_TGC0_GLB_CTRL.U |= 0x2 << UPEN_CTRL1_BIT_LSB_IDX;  // TOM channel 1 enable
-
-    GTM_TOM0_TGC0_FUPD_CTRL.U |= 0x2 << FUPD_CTRL1_BIT_LSB_IDX; // enable force update of TOM channel 1
-    GTM_TOM0_TGC0_FUPD_CTRL.U |= 0x2 << RSCNT0_CN1_BIT_LSB_IDX; // reset CN0 of TOM channel 1
-
     GTM_TOM0_TGC0_ENDIS_CTRL.U |= 0x2 << ENDIS_CTRL1_BIT_LSB_IDX;   // enable channel 1 on update trigger
     GTM_TOM0_TGC0_OUTEN_CTRL.U |= 0x2 << OUTEN_CTRL1_BIT_LSB_IDX;   // enable channel 1 output on update trigger
 
-    GTM_TOM0_CH1_CTRL.U |= 0x1 << SL_BIT_LSB_IDX;                 // high signal level for duty cycle
+
+    // set TGC0 to enable GTM TOM0 channel 2, 3, 15
+    GTM_TOM0_TGC0_GLB_CTRL.B.UPEN_CTRL2 |= 0x2;  // TOM0 channel 2 enable
+    GTM_TOM0_TGC0_GLB_CTRL.B.UPEN_CTRL3 |= 0x2;  // TOM0 channel 3 enable
+    GTM_TOM0_TGC1_GLB_CTRL.B.UPEN_CTRL7 |= 0x2;  // TOM0 channel 15 enable
+
+    GTM_TOM0_TGC0_ENDIS_CTRL.B.ENDIS_CTRL2 |= 0x2;   // enable channel 2 on update trigger
+    GTM_TOM0_TGC0_ENDIS_CTRL.B.ENDIS_CTRL3 |= 0x2;   // enable channel 3 on update trigger
+    GTM_TOM0_TGC1_ENDIS_CTRL.B.ENDIS_CTRL7 |= 0x2;   // enable channel 15 on update trigger
+
+    GTM_TOM0_TGC0_OUTEN_CTRL.B.OUTEN_CTRL2 |= 0x2;   // enable channel 2 output on update trigger
+    GTM_TOM0_TGC0_OUTEN_CTRL.B.OUTEN_CTRL3 |= 0x2;   // enable channel 3 output on update trigger
+    GTM_TOM0_TGC1_OUTEN_CTRL.B.OUTEN_CTRL7 |= 0x2;   // enable channel 15 output on update trigger
+
+
+    // TOM 0_1
+    GTM_TOM0_CH1_CTRL.U |= 0x1 << SL_BIT_LSB_IDX;                   // high signal level for duty cycle
 
     GTM_TOM0_CH1_CTRL.U &= ~(0x7 << CLK_SRC_SR_BIT_LSB_IDX);
-    GTM_TOM0_CH1_CTRL.U |= 0x1 << CLK_SRC_SR_BIT_LSB_IDX;           // clock source --> CMU_FXCLK(1) = 3125 kHz
+    GTM_TOM0_CH1_CTRL.U |= 0x1 << CLK_SRC_SR_BIT_LSB_IDX;           // clock source --> CMU_FXCLK(1) = 6250 kHz
 
-    GTM_TOM0_CH1_SR0.U = 12500 - 1;                             // PWM freq. = 3125 kHz / 12500 = 250 kHz
+    GTM_TOM0_CH1_SR0.U = 12500 - 1;                                 // PWM freq. = 6250 kHz / 12500 = 250 kHz
+    GTM_TOM0_CH1_SR1.U = 1250 - 1;                                  // duty cycle = 6250 / 12500 = 50 %
 
-    GTM_TOM0_CH1_SR1.U = 1250 - 1;                              // duty cycle = 6250 / 12500 = 50 %
+    // TOM 0_2
+    GTM_TOM0_CH2_CTRL.U |= 0x1 << SL_BIT_LSB_IDX;                   // high signal level for duty cycle
 
-    GTM_TOUTSEL6.U &= ~(0x3 << SEL7_BIT_LSB_IDX);                   // TOUT103 --> TOM0 channel 1
-                                                                // 103 = 16 * 6 + 7
-    GTM_TOM0_TGC0_GLB_CTRL.U |= 0x1 << HOST_TRIG_BIT_LSB_IDX;       // trigger update request signal
+    GTM_TOM0_CH2_CTRL.U &= ~(0x7 << CLK_SRC_SR_BIT_LSB_IDX);
+    GTM_TOM0_CH2_CTRL.U |= 0x1 << CLK_SRC_SR_BIT_LSB_IDX;           // clock source --> CMU_FXCLK(1) = 6250 kHz
 
+    GTM_TOM0_CH2_SR0.U = 12500 - 1;                                 // PWM freq. = 6250 kHz / 12500 = 250 kHz
+    //GTM_TOM0_CH2_SR1.U = 12500 - 1;                               // duty cycle = 6250 / 12500 = 50 %
+
+    // TOM 0_3
+    GTM_TOM0_CH3_CTRL.U |= 0x1 << SL_BIT_LSB_IDX;                   // high signal level for duty cycle
+
+    GTM_TOM0_CH3_CTRL.U &= ~(0x7 << CLK_SRC_SR_BIT_LSB_IDX);
+    GTM_TOM0_CH3_CTRL.U |= 0x1 << CLK_SRC_SR_BIT_LSB_IDX;           // clock source --> CMU_FXCLK(1) = 6250 kHz
+
+    GTM_TOM0_CH3_SR0.U = 12500 - 1;                                 // PWM freq. = 6250 kHz / 12500 = 250 kHz
+    //GTM_TOM0_CH3_SR1.U = 125 - 1;                                 // duty cycle = 6250 / 12500 = 50 %
+
+    // TOM 0_15
+    GTM_TOM0_CH15_CTRL.B.SL |= 0x1;                                 // high signal level for duty cycle
+    GTM_TOM0_CH15_CTRL.B.CLK_SRC_SR |= 0x1;                         // clock source --> CMU_FXCLK(1) = 6250 kHz
+
+    GTM_TOM0_CH15_SR0.U = 12500 - 1;                                // PWM freq. = 6250 kHz / 12500 = 250 kHz
+    //GTM_TOM0_CH15_SR1.U = 125 - 1;                                // duty cycle = 6250 / 12500 = 50 %
+
+
+    // TOUT pin selection
+    GTM_TOUTSEL6.U &= ~(0x3 << SEL7_BIT_LSB_IDX);                   // TOUT103  --> TOM0 channel 1
+    GTM_TOUTSEL0.U &= ~(0x3 << SEL7_BIT_LSB_IDX);                   // TOUT7    --> TOM0 channel 15
+    GTM_TOUTSEL6.U &= ~(0x3 << SEL11_BIT_LSB_IDX);                  // TOUT103  --> TOM0 channel 2
+    GTM_TOUTSEL6.U &= ~(0x3 << SEL9_BIT_LSB_IDX);                   // TOUT105  --> TOM0 channel 3
+
+
+    // set GTM TOM0 channel 11 - Buzzer
+    GTM_TOM0_TGC1_GLB_CTRL.B.UPEN_CTRL3     |= 0x2;                   // TOM0 channel 11 enable
+    GTM_TOM0_TGC1_ENDIS_CTRL.B.ENDIS_CTRL3  |= 0x2;                   // enable channel 11 on update trigger
+    GTM_TOM0_TGC1_OUTEN_CTRL.B.OUTEN_CTRL3  |= 0x2;                   // enable channel 11 output on update trigger
+
+
+    // TOM 0_11
+    GTM_TOM0_CH11_CTRL.B.SL = 0x1;                                  // high signal level for duty cycle
+    GTM_TOM0_CH11_CTRL.B.CLK_SRC_SR = 0x1;                          // clock source --> CMU_FXCLK(1) = 6250 kHz
+    GTM_TOM0_CH11_SR0.B.SR0 = 12500 - 1;                            // PWM freq. = 6250 kHz / 12500 = 500 Hz
+    GTM_TOM0_CH11_SR1.B.SR1 = 6250 - 1;                             // duty cycle = 6250 / 12500 = 50 %
+
+    // TOUT pin selection
+    GTM_TOUTSEL0.B.SEL3 = 0x0;                                      // TOUT3  --> TOM0 channel 11
 }
 
 void initUSonic(void)
@@ -515,4 +631,9 @@ void usonicTrigger(void)
     P02_OUT.U |= 0x1 << P6_BIT_LSB_IDX;
     range_valid_flag = 0;
     CCU60_TCTR4.U = 0x1 << T12RS_BIT_LSB_IDX;           // T12 start counting
+}
+
+void initBuzzer(void)
+{
+    P02_IOCR0.B.PC3 = 0x11;
 }
